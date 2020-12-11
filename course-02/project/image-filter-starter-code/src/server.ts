@@ -1,6 +1,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
-import {filterImageFromURL, deleteLocalFiles} from './util/util';
+import { filterImageFromURL, deleteLocalFiles } from './util/util';
+import validator from 'validator';
 
 (async () => {
 
@@ -9,7 +10,7 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
 
   // Set the network port
   const port = process.env.PORT || 8082;
-  
+
   // Use the body parser middleware for post requests
   app.use(bodyParser.json());
 
@@ -26,17 +27,30 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
   //    image_url: URL of a publicly accessible image
   // RETURNS
   //   the filtered image file [!!TIP res.sendFile(filteredpath); might be useful]
+  app.get("/filteredimage", async (req: Request, res: Response) => {
+    try {
+      const imageUrl: any = req.query.image_url;
+      if (!imageUrl || !(typeof imageUrl === 'string') || !(validator.isURL(imageUrl))) {
+        return res.status(400).send("invalid image_url");
+      }
+      const filteredImagePath: string = await filterImageFromURL(imageUrl);
+      return res.sendFile(filteredImagePath, () => deleteLocalFiles([filteredImagePath]));
+    } catch (err) {
+      console.error("Something went wrong while processing the image", err);
+      return res.status(500).send("Something went wrong while processing the image");
+    }
+  });
 
   /**************************************************************************** */
 
   //! END @TODO1
-  
+
   // Root Endpoint
   // Displays a simple message to the user
   app.get( "/", async ( req, res ) => {
     res.send("try GET /filteredimage?image_url={{}}")
   } );
-  
+
 
   // Start the Server
   app.listen( port, () => {
