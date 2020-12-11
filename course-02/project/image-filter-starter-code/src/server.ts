@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import { filterImageFromURL, deleteLocalFiles } from './util/util';
 import validator from 'validator';
@@ -34,7 +34,7 @@ import validator from 'validator';
         return res.status(400).send("invalid image_url");
       }
       const filteredImagePath: string = await filterImageFromURL(imageUrl);
-      return res.sendFile(filteredImagePath, () => deleteLocalFiles([filteredImagePath]));
+      return res.status(200).sendFile(filteredImagePath, () => deleteLocalFiles([filteredImagePath]));
     } catch (err) {
       console.error("Something went wrong while processing the image", err);
       return res.status(500).send("Something went wrong while processing the image");
