@@ -1,22 +1,18 @@
-import { CustomAuthorizerEvent, CustomAuthorizerResult } from 'aws-lambda'
 import 'source-map-support/register'
 
-import { verify, decode } from 'jsonwebtoken'
+import { verify } from 'jsonwebtoken'
 import { createLogger } from '../../utils/logger'
-import Axios from 'axios'
-import { Jwt } from '../../auth/Jwt'
+import axios from 'axios'
 import { JwtPayload } from '../../auth/JwtPayload'
+import { APIGatewayAuthorizerResult, APIGatewayTokenAuthorizerEvent } from 'aws-lambda/trigger/api-gateway-authorizer'
 
 const logger = createLogger('auth')
 
-// TODO: Provide a URL that can be used to download a certificate that can be used
-// to verify JWT token signature.
-// To get this URL you need to go to an Auth0 page -> Show Advanced Settings -> Endpoints -> JSON Web Key Set
-const jwksUrl = '...'
+const jwksUrl = 'https://dev-mekfdecu.eu.auth0.com/.well-known/jwks.json'
 
 export const handler = async (
-  event: CustomAuthorizerEvent
-): Promise<CustomAuthorizerResult> => {
+  event: APIGatewayTokenAuthorizerEvent
+): Promise<APIGatewayAuthorizerResult> => {
   logger.info('Authorizing a user', event.authorizationToken)
   try {
     const jwtToken = await verifyToken(event.authorizationToken)
@@ -56,12 +52,8 @@ export const handler = async (
 
 async function verifyToken(authHeader: string): Promise<JwtPayload> {
   const token = getToken(authHeader)
-  const jwt: Jwt = decode(token, { complete: true }) as Jwt
-
-  // TODO: Implement token verification
-  // You should implement it similarly to how it was implemented for the exercise for the lesson 5
-  // You can read more about how to do this here: https://auth0.com/blog/navigating-rs256-and-jwks/
-  return undefined
+  const publicKey: string = await getPublicKey();
+  return verify(token, publicKey, {algorithms: ['RS256']}) as JwtPayload;
 }
 
 function getToken(authHeader: string): string {
@@ -71,7 +63,35 @@ function getToken(authHeader: string): string {
     throw new Error('Invalid authentication header')
 
   const split = authHeader.split(' ')
-  const token = split[1]
+  return split[1]
+}
 
-  return token
+async function getPublicKey(): Promise<string> {
+
+  const certToPEM = (cert) => {
+    cert = cert.match(/.{1,64}/g).join('\n');
+    cert = `-----BEGIN CERTIFICATE-----\n${cert}\n-----END CERTIFICATE-----\n`;
+    return cert;
+  }
+
+  const res = await axios.get(jwksUrl);
+  const keys = res.data.keys;
+  if (!keys || !keys.length) {
+    throw new Error('The JWKS endpoint did not contain any keys');
+  }
+
+  const signingKeys = keys
+    .filter(key => key.use === 'sig'
+      && key.kty === 'RSA'
+      && key.kid
+      && ((key.x5c && key.x5c.length) || (key.n && key.e))
+    ).map(key => {
+      return { kid: key.kid, nbf: key.nbf, publicKey: certToPEM(key.x5c[0]) };
+    });
+
+  if (!signingKeys.length) {
+    throw new Error('The JWKS endpoint did not contain any signature verification keys');
+  }
+
+  return signingKeys[0].publicKey;
 }
