@@ -1,30 +1,13 @@
 import 'source-map-support/register'
 
 import { APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
-import * as AWS from 'aws-sdk'
 import { TodoItem } from '../../models/TodoItem'
 import { getUserId } from '../utils'
-
-const todoTable = process.env.TODO_TABLE;
-const todoUserIndex = process.env.TODO_USER_INDEX;
-const docClient = new AWS.DynamoDB.DocumentClient();
+import { getTodos } from '../../services/todosService'
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-
-  const userId = getUserId(event);
-
-  const result = await docClient.query({
-    TableName: todoTable,
-    IndexName: todoUserIndex,
-    KeyConditionExpression: 'userId = :userId',
-    ExpressionAttributeValues: {
-      ':userId': userId
-    },
-    ScanIndexForward: false
-  }).promise()
-
-  const items = result.Items as TodoItem[]
-
+  const userId: string = getUserId(event)
+  const items: TodoItem[] = await getTodos(userId)
   return {
     statusCode: 200,
     headers: {
@@ -33,5 +16,5 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
     body: JSON.stringify({
       items
     })
-  };
+  }
 }

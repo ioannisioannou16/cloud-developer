@@ -1,0 +1,17 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": ["name", "dueDate", "done"],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "dueDate": {
+      "type": "string"
+    },
+    "done": {
+      "type": "boolean"
+    }
+  }
+}

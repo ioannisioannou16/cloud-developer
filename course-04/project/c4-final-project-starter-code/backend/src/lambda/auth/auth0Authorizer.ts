@@ -52,8 +52,8 @@ export const handler = async (
 
 async function verifyToken(authHeader: string): Promise<JwtPayload> {
   const token = getToken(authHeader)
-  const publicKey: string = await getPublicKey();
-  return verify(token, publicKey, {algorithms: ['RS256']}) as JwtPayload;
+  const publicKey: string = await getPublicKey()
+  return verify(token, publicKey, {algorithms: ['RS256']}) as JwtPayload
 }
 
 function getToken(authHeader: string): string {
@@ -69,15 +69,15 @@ function getToken(authHeader: string): string {
 async function getPublicKey(): Promise<string> {
 
   const certToPEM = (cert) => {
-    cert = cert.match(/.{1,64}/g).join('\n');
-    cert = `-----BEGIN CERTIFICATE-----\n${cert}\n-----END CERTIFICATE-----\n`;
-    return cert;
+    cert = cert.match(/.{1,64}/g).join('\n')
+    cert = `-----BEGIN CERTIFICATE-----\n${cert}\n-----END CERTIFICATE-----\n`
+    return cert
   }
 
-  const res = await axios.get(jwksUrl);
-  const keys = res.data.keys;
+  const res = await axios.get(jwksUrl)
+  const keys = res.data.keys
   if (!keys || !keys.length) {
-    throw new Error('The JWKS endpoint did not contain any keys');
+    throw new Error('The JWKS endpoint did not contain any keys')
   }
 
   const signingKeys = keys
@@ -86,12 +86,12 @@ async function getPublicKey(): Promise<string> {
       && key.kid
       && ((key.x5c && key.x5c.length) || (key.n && key.e))
     ).map(key => {
-      return { kid: key.kid, nbf: key.nbf, publicKey: certToPEM(key.x5c[0]) };
-    });
+      return { kid: key.kid, nbf: key.nbf, publicKey: certToPEM(key.x5c[0]) }
+    })
 
   if (!signingKeys.length) {
-    throw new Error('The JWKS endpoint did not contain any signature verification keys');
+    throw new Error('The JWKS endpoint did not contain any signature verification keys')
   }
 
-  return signingKeys[0].publicKey;
+  return signingKeys[0].publicKey
 }
